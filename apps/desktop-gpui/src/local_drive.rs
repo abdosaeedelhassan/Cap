@@ -29,7 +29,7 @@ const DRIVE_FILES: &str = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD: &str = "https://www.googleapis.com/upload/drive/v3/files";
 const USERINFO_URL: &str = "https://www.googleapis.com/oauth2/v3/userinfo";
 const SCOPE: &str =
-    "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email";
+    "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email";
 
 /// Drive resumable chunks must be a multiple of 256 KiB, except the last one.
 const CHUNK_SIZE: u64 = 16 * 1024 * 1024;
@@ -279,7 +279,7 @@ pub fn begin_auth(client_id: &str, client_secret: &str) -> Result<AuthSession, S
     let code_verifier = pkce_verifier();
     let code_challenge = pkce_challenge(&code_verifier);
     let url = format!(
-        "{AUTH_URL}?client_id={}&redirect_uri={}&response_type=code&scope={}&access_type=offline&prompt=consent&include_granted_scopes=true&state={}&code_challenge={}&code_challenge_method=S256",
+        "{AUTH_URL}?client_id={}&redirect_uri={}&response_type=code&scope={}&access_type=offline&prompt=consent&state={}&code_challenge={}&code_challenge_method=S256",
         urlencode(client_id.trim()),
         urlencode(&redirect_uri),
         urlencode(SCOPE),
