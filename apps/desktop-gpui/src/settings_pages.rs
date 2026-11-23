@@ -68,7 +68,6 @@ enum PageField {
     Feedback,
     LicenseKey,
     S3(usize),
-    LocalDrive(usize),
 }
 
 /// `saveState` in transcription.tsx.
@@ -258,18 +257,7 @@ struct S3Page {
     testing: bool,
 }
 
-/// The two text fields of the local (account-free) Google Drive form.
-const LOCAL_DRIVE_FIELDS: [(&str, &str); 2] = [
-    (
-        "OAuth client ID",
-        "1234567890-abc123.apps.googleusercontent.com",
-    ),
-    ("OAuth client secret", "GOCSPX-..."),
-];
-
 struct LocalDrivePage {
-    drafts: [String; 2],
-    inputs: [Entity<ui::TextInputState>; 2],
     busy: bool,
     error: Option<String>,
     connected: bool,
@@ -415,19 +403,6 @@ impl PagesState {
         });
 
         let local_drive_config = crate::local_drive::Config::load();
-        let local_drive_inputs = std::array::from_fn(|index| {
-            cx.new(|cx| {
-                let mut input = ui::TextInputState::single_line(window, cx);
-                input.set_placeholder(LOCAL_DRIVE_FIELDS[index].1);
-                let text = if index == 0 {
-                    local_drive_config.client_id.as_str()
-                } else {
-                    local_drive_config.client_secret.as_str()
-                };
-                input.set_text(text, cx);
-                input
-            })
-        });
 
         let mut subscriptions = vec![
             cx.subscribe(&hint_input, |this, input, event, cx| {
@@ -443,11 +418,6 @@ impl PagesState {
         for (index, input) in s3_inputs.iter().enumerate() {
             subscriptions.push(cx.subscribe(input, move |this, input, event, cx| {
                 this.page_field_event(PageField::S3(index), input, event, cx)
-            }));
-        }
-        for (index, input) in local_drive_inputs.iter().enumerate() {
-            subscriptions.push(cx.subscribe(input, move |this, input, event, cx| {
-                this.page_field_event(PageField::LocalDrive(index), input, event, cx)
             }));
         }
         // Keys stop arriving once the window loses focus, so a recording row
@@ -520,11 +490,6 @@ impl PagesState {
                 poll: None,
             },
             local_drive: LocalDrivePage {
-                drafts: [
-                    local_drive_config.client_id.clone(),
-                    local_drive_config.client_secret.clone(),
-                ],
-                inputs: local_drive_inputs,
                 busy: false,
                 error: None,
                 connected: local_drive_config.is_connected(),
@@ -614,7 +579,6 @@ impl SettingsWindow {
                     PageField::Feedback => self.pages.feedback_draft = value,
                     PageField::LicenseKey => self.pages.license_draft = value,
                     PageField::S3(index) => self.pages.s3.drafts[index] = value,
-                    PageField::LocalDrive(index) => self.pages.local_drive.drafts[index] = value,
                 }
                 cx.notify();
             }
@@ -4780,24 +4744,10 @@ impl SettingsWindow {
         cx.notify();
     }
 
-    /// Connect the local Drive: start OAuth, open the browser, then wait for
-    /// the loopback callback in the background.
     fn local_drive_connect(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let client_id = self.pages.local_drive.drafts[0].trim().to_string();
-        let client_secret = self.pages.local_drive.drafts[1].trim().to_string();
-        if client_id.is_empty() || client_secret.is_empty() {
-            self.pages.local_drive.error =
-                Some("Enter your Google OAuth client ID and secret first".into());
-            cx.notify();
-            return;
-        }
-
-        let mut config = crate::local_drive::Config::load();
-        config.client_id = client_id.clone();
-        config.client_secret = client_secret;
-        config.save();
-
-        let session = match crate::local_drive::begin_auth(&client_id, &config.client_secret) {
+        let config = crate::local_drive::Config::load();
+        let session = match crate::local_drive::begin_auth(&config.client_id, &config.client_secret)
+        {
             Ok(session) => session,
             Err(error) => {
                 self.pages.local_drive.error = Some(error);
@@ -5576,8 +5526,6 @@ impl SettingsWindow {
             .into_any_element()
     }
 
-    /// Local Google Drive page: OAuth credentials, connection status, and the
-    /// opt-in switch that redirects shares away from Cap's server.
     fn render_local_drive_config(&self, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
         let theme = self.theme;
         let drive = &self.pages.local_drive;
@@ -5617,45 +5565,17 @@ impl SettingsWindow {
                 ),
         );
 
-        for (index, (label, _)) in LOCAL_DRIVE_FIELDS.iter().enumerate() {
-            form = form.child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(8.))
-                    .child(div().text_size(px(13.)).child(*label))
-                    .child(self.pages_input(("local-drive-field", index), &drive.inputs[index])),
-            );
-        }
-
         form = form.child(
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(4.))
-                .child(
-                    div()
-                        .text_size(px(12.))
-                        .line_height(px(18.))
-                        .text_color(theme.settings_muted())
-                        .child(
-                            "Create a Google Cloud project, enable the Google Drive API, \
-                             then add a Desktop OAuth client. Paste its client ID and secret \
-                             above and click Connect.",
-                        ),
-                )
-                .child(
-                    div()
-                        .id("local-drive-console-link")
-                        .text_size(px(12.))
-                        .text_color(theme.settings_text())
-                        .underline()
-                        .cursor_pointer()
-                        .child("Open Google Cloud Console")
-                        .on_click(|_, _, cx| {
-                            cx.open_url("https://console.cloud.google.com/apis/credentials")
-                        }),
-                ),
+            div().flex().flex_col().gap(px(4.)).child(
+                div()
+                    .text_size(px(12.))
+                    .line_height(px(18.))
+                    .text_color(theme.settings_muted())
+                    .child(
+                        "Click Connect, sign in to Google, and approve access. \
+                             Google will ask permission to manage files created by Cap.",
+                    ),
+            ),
         );
 
         let card = self.card(true).child(form);

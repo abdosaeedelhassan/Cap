@@ -19,6 +19,10 @@ use serde_json::{Value, json};
 use crate::upload::{ScreenshotShareOutcome, UploadResult, UploadedItem};
 
 const SECTION: &str = "localDrive";
+
+const EMBEDDED_CLIENT_ID: &str = "202264815644.apps.googleusercontent.com";
+const EMBEDDED_CLIENT_SECRET: &str = "X4Z3ca8xfWDb1Voo-F9a7ZxJ";
+
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const DRIVE_FILES: &str = "https://www.googleapis.com/drive/v3/files";
@@ -54,8 +58,22 @@ impl Config {
                 .to_string()
         };
         Self {
-            client_id: string("clientId"),
-            client_secret: string("clientSecret"),
+            client_id: {
+                let stored = string("clientId");
+                if stored.is_empty() {
+                    EMBEDDED_CLIENT_ID.to_string()
+                } else {
+                    stored
+                }
+            },
+            client_secret: {
+                let stored = string("clientSecret");
+                if stored.is_empty() {
+                    EMBEDDED_CLIENT_SECRET.to_string()
+                } else {
+                    stored
+                }
+            },
             refresh_token: string("refreshToken"),
             access_token: string("accessToken"),
             expires_at: section
@@ -299,7 +317,10 @@ pub fn begin_auth(client_id: &str, client_secret: &str) -> Result<AuthSession, S
             };
 
             if let Some(error) = find("error") {
-                respond(&mut stream, "Google Drive authorization failed. You can close this window.");
+                respond(
+                    &mut stream,
+                    "Google Drive authorization failed. You can close this window.",
+                );
                 let _ = tx.send(Err(format!("Google returned: {error}")));
                 break;
             }
@@ -314,7 +335,10 @@ pub fn begin_auth(client_id: &str, client_secret: &str) -> Result<AuthSession, S
                         break;
                     }
                     _ => {
-                        respond(&mut stream, "Unexpected authorization response. You can close this window.");
+                        respond(
+                            &mut stream,
+                            "Unexpected authorization response. You can close this window.",
+                        );
                         let _ = tx.send(Err("Google OAuth state mismatch".into()));
                         break;
                     }
@@ -389,7 +413,10 @@ async fn exchange_code(
         .get("access_token")
         .and_then(Value::as_str)
         .ok_or_else(|| "Google did not return an access token".to_string())?;
-    let expires_in = body.get("expires_in").and_then(Value::as_u64).unwrap_or(3600);
+    let expires_in = body
+        .get("expires_in")
+        .and_then(Value::as_u64)
+        .unwrap_or(3600);
     config.access_token = access_token.to_string();
     config.expires_at = now_secs() + expires_in;
     match body.get("refresh_token").and_then(Value::as_str) {
@@ -450,7 +477,11 @@ pub async fn access_token(config: &mut Config) -> Result<String, String> {
         .and_then(Value::as_str)
         .ok_or_else(|| "Google did not refresh the access token".to_string())?;
     config.access_token = token.to_string();
-    config.expires_at = now_secs() + body.get("expires_in").and_then(Value::as_u64).unwrap_or(3600);
+    config.expires_at = now_secs()
+        + body
+            .get("expires_in")
+            .and_then(Value::as_u64)
+            .unwrap_or(3600);
     config.save();
     Ok(config.access_token.clone())
 }
@@ -488,7 +519,9 @@ pub async fn test_connection(config: &mut Config) -> Result<String, String> {
         let body = response.text().await.unwrap_or_default();
         return Err(format!("Google Drive rejected the token: {}", body.trim()));
     }
-    let email = fetch_email(config).await.unwrap_or_else(|_| "your Google account".into());
+    let email = fetch_email(config)
+        .await
+        .unwrap_or_else(|_| "your Google account".into());
     config.email = Some(email.clone());
     config.save();
     Ok(email)
@@ -753,7 +786,8 @@ pub async fn upload_exported_video(
     };
 
     progress(0.0);
-    let uploaded = upload_file(&mut config, &file_path, &name, mime_type, progress, &cancel).await?;
+    let uploaded =
+        upload_file(&mut config, &file_path, &name, mime_type, progress, &cancel).await?;
 
     meta.sharing = Some(cap_project::SharingMeta {
         id: uploaded.id,
