@@ -1064,13 +1064,7 @@ enum PlanBadge {
 
 impl PlanBadge {
     fn current() -> Self {
-        if crate::store::auth_snapshot().is_upgraded() {
-            Self::Pro
-        } else if crate::store::commercial_license().is_some() {
-            Self::Commercial
-        } else {
-            Self::Personal
-        }
+        Self::Pro
     }
 }
 
@@ -6767,11 +6761,7 @@ impl MainWindow {
                 .border_color(theme.body_border(5))
                 .bg(theme.body_fill(3))
                 .text_color(theme.gray_12)
-                .child(tr::main::plan::personal())
-                .hover(|style| style.bg(theme.body_hover_fill(5)))
-                .on_click(|_, _, cx| {
-                    cx.open_url(crate::auth::PRICING_URL);
-                }),
+                .child(tr::main::plan::personal()),
             PlanBadge::Pro | PlanBadge::Commercial => badge
                 .bg(theme.blue_9)
                 .text_color(gpui::white())

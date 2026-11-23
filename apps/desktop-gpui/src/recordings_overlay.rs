@@ -52,8 +52,6 @@ const FAILURE_VISIBLE: Duration = Duration::from_secs(6);
 const PROGRESS_POLL: Duration = Duration::from_millis(50);
 const OVERLAY_EXPORT_FPS: u32 = 60;
 const OVERLAY_EXPORT_SIZE: (u32, u32) = (1920, 1080);
-const FREE_SHARE_LIMIT_SECS: f64 = 300.;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MediaKind {
     Recording,
@@ -956,27 +954,6 @@ impl Overlay {
             }
             return;
         }
-        let needs_upgrade = match kind {
-            MediaKind::Recording => {
-                !auth.is_upgraded() && duration.is_some_and(|secs| secs >= FREE_SHARE_LIMIT_SECS)
-            }
-            MediaKind::Screenshot => !auth.is_upgraded(),
-        };
-        if needs_upgrade {
-            if self.entry(id).is_some_and(|entry| !entry.state.is_busy()) {
-                cx.open_url(crate::auth::PRICING_URL);
-                self.set_state(
-                    id,
-                    ActionState::Failed(
-                        ActionKind::Share,
-                        tr::editor::export::upgrade_message().to_string(),
-                    ),
-                    cx,
-                );
-            }
-            return;
-        }
-
         let first = match kind {
             MediaKind::Recording => Stage::Rendering {
                 rendered: 0,

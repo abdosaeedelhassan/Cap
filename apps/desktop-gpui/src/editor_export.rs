@@ -2075,12 +2075,6 @@ impl EditorWindow {
             return;
         }
 
-        let upgraded = store::auth_snapshot().is_upgraded();
-        if !upgraded && duration >= 300.0 {
-            cx.open_url(crate::auth::PRICING_URL);
-            return;
-        }
-
         let estimate = ui
             .estimate
             .as_ref()
@@ -2286,20 +2280,13 @@ impl EditorWindow {
                                 true,
                             );
                         }
-                        Ok(Ok(crate::upload::UploadResult::UpgradeRequired)) => {
+                        Ok(Ok(_)) => {
                             let _ = this.update(cx, |this, cx| {
                                 if let Some(ui) = this.export.as_mut() {
                                     ui.phase = ExportPhase::Idle;
                                 }
                                 cx.notify();
                             });
-                            let _ = this.update(cx, |_, cx| {
-                                cx.open_url(crate::auth::PRICING_URL);
-                            });
-                            platform::alert_dialog(
-                                tr::editor::export::upgrade_title(),
-                                tr::editor::export::upgrade_message(),
-                            );
                         }
                         Ok(Err(error)) => {
                             if error == "Export cancelled" || cancel.load(Ordering::Relaxed) {

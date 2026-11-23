@@ -4350,18 +4350,8 @@ impl SettingsWindow {
     pub(crate) fn render_license(&self, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
         let theme = self.theme;
         let auth = store::auth_snapshot();
-        let pro = auth.is_upgraded();
         let license = store::commercial_license();
-        let (name, description) = if pro {
-            ("Cap Pro", tr::settings::license::pro_description())
-        } else if license.is_some() {
-            (
-                tr::settings::license::desktop_name(),
-                tr::settings::license::desktop_description(),
-            )
-        } else {
-            ("Cap Free", tr::settings::license::free_description())
-        };
+        let (name, description) = ("Cap Pro", tr::settings::license::pro_description());
         let mut content = vec![
             self.section(
                 tr::settings::license::title(),
@@ -4485,13 +4475,11 @@ impl SettingsWindow {
             )
             .into_any_element(),
         ];
-        if !pro {
-            content.push(if let Some(license) = license {
-                self.render_license_active(license, cx)
-            } else {
-                self.render_license_activate(cx).into_any_element()
-            });
-        }
+        content.push(if let Some(license) = license {
+            self.render_license_active(license, cx)
+        } else {
+            self.render_license_activate(cx).into_any_element()
+        });
         content
     }
 
@@ -5015,7 +5003,6 @@ impl SettingsWindow {
                             this.gdrive_wait_for_connection(window, cx);
                         }
                     }
-                    Ok((403, _)) => cx.open_url(crate::auth::PRICING_URL),
                     Ok(_) => {
                         this.pages.gdrive.error =
                             Some(tr::settings::integrations::gdrive::connect_failed().to_string())
@@ -5259,8 +5246,6 @@ impl SettingsWindow {
 
     fn render_integrations_index(&self, cx: &mut Context<Self>) -> Vec<gpui::AnyElement> {
         let theme = self.theme;
-        let auth = store::auth_snapshot();
-        let is_pro = auth.plan_upgraded;
         let managed = self
             .pages
             .storage
@@ -5292,8 +5277,6 @@ impl SettingsWindow {
                     |(index, (name, icon, description, view))| {
                         let button_label = if managed.is_some() {
                             tr::settings::integrations::managed()
-                        } else if !is_pro {
-                            tr::settings::integrations::upgrade()
                         } else {
                             tr::settings::integrations::configure()
                         };
@@ -5333,10 +5316,6 @@ impl SettingsWindow {
                                         cx,
                                         move |this, window, cx| {
                                             if managed_here {
-                                                return;
-                                            }
-                                            if !store::auth_snapshot().plan_upgraded {
-                                                cx.open_url(crate::auth::PRICING_URL);
                                                 return;
                                             }
                                             match view {

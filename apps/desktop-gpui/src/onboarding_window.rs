@@ -1728,10 +1728,7 @@ impl OnboardingWindow {
                                                 )
                                                 .id("onboarding-faq-pricing")
                                                 .cursor_pointer()
-                                                .mt(px(8.))
-                                                .on_click(|_, _, cx| {
-                                                    cx.open_url(crate::auth::PRICING_URL)
-                                                }),
+                                                .mt(px(8.)),
                                             )
                                         }),
                                 )
@@ -1741,8 +1738,7 @@ impl OnboardingWindow {
             .child(
                 copy(tr::onboarding::faq::pricing_link(), 13., theme.blue_10)
                     .id("onboarding-pricing")
-                    .cursor_pointer()
-                    .on_click(|_, _, cx| cx.open_url(crate::auth::PRICING_URL)),
+                    .cursor_pointer(),
             )
             .into_any_element()
     }

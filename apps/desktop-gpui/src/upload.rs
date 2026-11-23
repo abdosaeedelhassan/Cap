@@ -1417,9 +1417,6 @@ async fn upload_exported_video_inner(
     }
 
     let metadata = build_video_meta(&file_path)?;
-    if !crate::store::auth_snapshot().is_upgraded() && metadata.duration_in_secs > 300.0 {
-        return Ok((UploadResult::UpgradeRequired, None));
-    }
 
     progress(0.0);
     if cancel.load(Ordering::Relaxed) {
@@ -1443,9 +1440,6 @@ async fn upload_exported_video_inner(
                 Ok(video_id) => video_id,
                 Err(AuthApiError::InvalidAuthentication) => {
                     return Ok((UploadResult::NotAuthenticated, None));
-                }
-                Err(AuthApiError::UpgradeRequired) => {
-                    return Ok((UploadResult::UpgradeRequired, None));
                 }
                 Err(error) => return Err(error.to_string()),
             };
@@ -1476,7 +1470,6 @@ async fn upload_exported_video_inner(
         Err(AuthApiError::InvalidAuthentication) => {
             return Ok((UploadResult::NotAuthenticated, None));
         }
-        Err(AuthApiError::UpgradeRequired) => return Ok((UploadResult::UpgradeRequired, None)),
         Err(error) => return Err(error.to_string()),
     };
     let created_link = s3_config.share_url;
@@ -1538,7 +1531,6 @@ async fn upload_exported_video_inner(
             check_export_cancelled(&cancel).map_err(|error| error.to_string())?;
             Ok((UploadResult::Success(link), object_identity))
         }
-        Err(AuthApiError::UpgradeRequired) => Ok((UploadResult::UpgradeRequired, None)),
         Err(AuthApiError::InvalidAuthentication) => Ok((UploadResult::NotAuthenticated, None)),
         Err(error) => {
             if !defer_completion && !cancel.load(Ordering::Relaxed) {
@@ -1641,10 +1633,6 @@ async fn create_or_get_video_with_mode(
     let response = auth::authed_request(reqwest::Method::GET, &path, None).await?;
     if response.status() != StatusCode::OK {
         let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        if status == StatusCode::FORBIDDEN && body.contains("upgrade_required") {
-            return Err(AuthApiError::UpgradeRequired);
-        }
         return Err(AuthApiError::Other(format!(
             "create_or_get_video/error/{status}"
         )));
@@ -2731,14 +2719,10 @@ pub async fn upload_rendered_screenshot(
         let _ = crate::store::set_auth(None);
         return Ok(ScreenshotShareOutcome::NotAuthenticated);
     }
-    if !auth.is_upgraded() {
-        return Ok(ScreenshotShareOutcome::UpgradeRequired);
-    }
 
     match upload_screenshot_bytes(image_bytes, content_type, video_id, organization_id).await {
         Ok(item) => Ok(ScreenshotShareOutcome::Uploaded(item)),
         Err(AuthApiError::InvalidAuthentication) => Ok(ScreenshotShareOutcome::NotAuthenticated),
-        Err(AuthApiError::UpgradeRequired) => Ok(ScreenshotShareOutcome::UpgradeRequired),
         Err(error) => Err(error.to_string()),
     }
 }
@@ -2975,11 +2959,31 @@ mod tests {
     async fn signed_uploads_send_one_content_type_on_the_wire() {
         let (url, requests) = strict_put_server().await;
         for (subpath, signed_type, sent_type) in [
-            ("segments/manifest.json", Some("application/json"), "application/json"),
-            ("segments/recording.json", Some("application/json"), "application/json"),
-            ("screenshot/screen-capture.jpg", Some("image/jpeg"), "image/jpeg"),
-            ("screenshot/screen-capture.png", Some("image/png"), "image/png"),
-            ("segments/video/segment_001.m4s", Some("video/mp4"), "video/mp4"),
+            (
+                "segments/manifest.json",
+                Some("application/json"),
+                "application/json",
+            ),
+            (
+                "segments/recording.json",
+                Some("application/json"),
+                "application/json",
+            ),
+            (
+                "screenshot/screen-capture.jpg",
+                Some("image/jpeg"),
+                "image/jpeg",
+            ),
+            (
+                "screenshot/screen-capture.png",
+                Some("image/png"),
+                "image/png",
+            ),
+            (
+                "segments/video/segment_001.m4s",
+                Some("video/mp4"),
+                "video/mp4",
+            ),
             ("segments/video/segment_001.m4s", None, "video/mp4"),
             ("segments/manifest.json", None, "application/json"),
         ] {

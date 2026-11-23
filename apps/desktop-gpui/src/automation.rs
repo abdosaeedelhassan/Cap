@@ -920,7 +920,7 @@ impl AutomationHost for GpuiAutomationHost {
                     return Err("Not authenticated for upload".to_string());
                 }
                 crate::upload::UploadResult::UpgradeRequired => {
-                    return Err("Upgrade required for upload".to_string());
+                    return Err("Upload not supported".to_string());
                 }
             }
         } else {
@@ -1458,7 +1458,7 @@ async fn upload_screenshot(
             return Err("Not authenticated for upload".to_string());
         }
         crate::upload::ScreenshotShareOutcome::UpgradeRequired => {
-            return Err("Upgrade required for upload".to_string());
+            return Err("Screenshot upload not supported".to_string());
         }
     };
     if let Some(mut meta) = meta {
