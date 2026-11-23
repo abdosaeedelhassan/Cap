@@ -1903,16 +1903,8 @@ impl OverlayWindow {
         }
     }
 
-    /// Instant mode uploads as it records, so it cannot start signed out
-    /// (`target-select-overlay.tsx`'s "Sign In To Use"). The editor's record
-    /// flow always records Studio whatever the pill says.
-    fn needs_sign_in(&self, mode: Mode, cx: &App) -> bool {
-        mode == Mode::Instant
-            && !self.signed_in
-            && crate::session::RecordingSession::global(cx)
-                .read(cx)
-                .editor_recording_target()
-                .is_none()
+    fn needs_sign_in(&self, _mode: Mode, _cx: &App) -> bool {
+        false
     }
 
     /// The overlays sit above every app, browser included, so they step aside

@@ -2493,9 +2493,13 @@ pub(crate) fn start_tracked(
 }
 
 async fn start_internal(
-    config: StartConfig,
+    mut config: StartConfig,
     #[cfg(target_os = "linux")] attempt: Option<InstantAttempt>,
 ) -> anyhow::Result<ActiveRecording> {
+    if config.mode == RecordingMode::Instant && !crate::store::auth_snapshot().signed_in() {
+        tracing::info!("instant recording needs a Cap account; falling back to studio mode");
+        config.mode = RecordingMode::Studio;
+    }
     #[cfg(target_os = "linux")]
     validate_linux_camera_request(
         config.mode,
@@ -2511,10 +2515,6 @@ async fn start_internal(
             cap_recording::studio_recording::AUDIO_ONLY_NEEDS_A_SOURCE
         ));
     }
-    if config.mode == RecordingMode::Instant && !crate::store::auth_snapshot().signed_in() {
-        return Err(anyhow!("Please sign in to use instant recording"));
-    }
-
     let project_dir = create_project_dir(&config.target, config.mode)?;
     let project_name = project_dir
         .file_stem()

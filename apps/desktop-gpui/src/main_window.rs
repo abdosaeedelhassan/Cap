@@ -147,13 +147,16 @@ impl Mode {
         }
     }
 
-    /// `get_current_mode` (`src-tauri/src/tray.rs:355-361`): the stored mode,
-    /// falling back to `RecordingMode::default()`, which is Instant.
     pub fn from_store() -> Self {
-        crate::store::recording_mode_slug()
+        let mode = crate::store::recording_mode_slug()
             .as_deref()
             .and_then(Self::from_slug)
-            .unwrap_or(Self::Instant)
+            .unwrap_or(Self::Instant);
+        if mode == Self::Instant && !crate::store::auth_snapshot().signed_in() {
+            Self::Studio
+        } else {
+            mode
+        }
     }
 
     /// The mode a "Record …" shortcut or tray item records in: this one, or
@@ -2546,18 +2549,13 @@ impl MainWindow {
                 None => return,
             }
         };
-        if mode == recording::RecordingMode::Instant && !crate::store::auth_snapshot().signed_in() {
-            let kind = match &target {
-                ScreenCaptureTarget::Display { .. } => TargetType::Display,
-                ScreenCaptureTarget::Window { .. } => TargetType::Window,
-                ScreenCaptureTarget::Area { .. } => TargetType::Area,
-                ScreenCaptureTarget::CameraOnly => TargetType::CameraOnly,
-                ScreenCaptureTarget::AudioOnly => TargetType::AudioOnly,
-            };
-            self.show_sign_in_prompt_for(kind, requested, cx);
-            cx.defer(app_windows::show_main_window);
-            return;
-        }
+        let mode = if mode == recording::RecordingMode::Instant
+            && !crate::store::auth_snapshot().signed_in()
+        {
+            recording::RecordingMode::Studio
+        } else {
+            mode
+        };
         if target.is_audio_only() && self.microphone.is_none() && !self.system_audio {
             self.session.update(cx, |session, cx| {
                 session.error = Some(tr::main::error::audio_only_needs_audio().into());
