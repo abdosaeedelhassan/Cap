@@ -1370,6 +1370,11 @@ pub async fn upload_exported_video(
     cancel: std::sync::Arc<AtomicBool>,
 ) -> Result<UploadResult, String> {
     check_export_cancelled(&cancel).map_err(|error| error.to_string())?;
+    // A locally connected Google Drive takes precedence over Cap's server, so
+    // shares work without a Cap account.
+    if crate::local_drive::is_enabled() {
+        return crate::local_drive::upload_exported_video(project_path, &progress, cancel).await;
+    }
     let auth_state = crate::store::store_section("auth");
     let Ok(context) = auth::UploadRequestContext::for_upload(
         &auth::server_url(),
@@ -2713,6 +2718,9 @@ pub async fn upload_rendered_screenshot(
     video_id: Option<String>,
     organization_id: Option<String>,
 ) -> Result<ScreenshotShareOutcome, String> {
+    if crate::local_drive::is_enabled() {
+        return crate::local_drive::upload_screenshot(image_bytes, content_type).await;
+    }
     let auth = crate::store::auth_snapshot();
     if !auth.signed_in() {
         // The Tauri command resets a corrupt/absent auth store on this path.

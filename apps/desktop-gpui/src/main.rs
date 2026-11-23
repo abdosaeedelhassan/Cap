@@ -71,6 +71,7 @@ mod linux_portal_id;
 #[cfg(target_os = "linux")]
 mod linux_wallpaper;
 mod live_draw;
+mod local_drive;
 mod main_window;
 mod media_access;
 mod menus;

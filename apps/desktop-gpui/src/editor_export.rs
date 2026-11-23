@@ -1290,7 +1290,9 @@ impl EditorWindow {
                 sign_in.update(cx, |sign_in, cx| sign_in.cancel(cx));
                 return;
             }
-            if ui.auth_rejected || !store::auth_snapshot().signed_in() {
+            if ui.auth_rejected
+                || (!store::auth_snapshot().signed_in() && !crate::local_drive::is_enabled())
+            {
                 sign_in.update(cx, |sign_in, cx| sign_in.start(SignInOrigin::Editor, cx));
                 return;
             }
@@ -2963,7 +2965,8 @@ impl EditorWindow {
     fn export_cta(&self, ui: &ExportUi, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme;
         let editor = theme.editor;
-        let signed_in = !ui.auth_rejected && store::auth_snapshot().signed_in();
+        let signed_in = !ui.auth_rejected
+            && (store::auth_snapshot().signed_in() || crate::local_drive::is_enabled());
         let sign_in_pending = SignIn::global(cx).read(cx).is_pending();
         let (label, icon, primary) = match ui.destination {
             ExportDestination::File if ui.format == ExportFormatKind::Tracks => (

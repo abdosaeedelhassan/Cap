@@ -938,7 +938,7 @@ impl Overlay {
         }
 
         let auth = crate::store::auth_snapshot();
-        if !auth.signed_in() {
+        if !auth.signed_in() && !crate::local_drive::is_enabled() {
             if self.entry(id).is_some_and(|entry| !entry.state.is_busy()) {
                 self.set_state(
                     id,
