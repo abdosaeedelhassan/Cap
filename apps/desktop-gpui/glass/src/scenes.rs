@@ -51,7 +51,10 @@ pub const NAMES: [&str; 9] = [
 
 /// Render `name` at `scale` device pixels per logical pixel.
 pub fn render(name: &str, scale: f32) -> Option<Rgba> {
-    let (width, height) = ((CANVAS.0 * scale).round() as usize, (CANVAS.1 * scale).round() as usize);
+    let (width, height) = (
+        (CANVAS.0 * scale).round() as usize,
+        (CANVAS.1 * scale).round() as usize,
+    );
     let mut image = Rgba::solid(width, height, [255.; 4]);
     for y in 0..height {
         for x in 0..width {
@@ -68,7 +71,11 @@ fn pixel(name: &str, x: f32, y: f32) -> Option<[f32; 4]> {
         "white" => gray(255.),
         "black" => gray(0.),
         "gray" => gray(128.),
-        "stripes" => gray(if (x / 8.).floor() as i64 % 2 == 0 { 0. } else { 255. }),
+        "stripes" => gray(if (x / 8.).floor() as i64 % 2 == 0 {
+            0.
+        } else {
+            255.
+        }),
         "grid" => {
             let on_line = |v: f32| (v + 1.).rem_euclid(24.) < 2.;
             if on_line(x) || on_line(y) {

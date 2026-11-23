@@ -72,7 +72,12 @@ impl Rgba {
         let (x0, y0) = (fx.floor() as usize, fy.floor() as usize);
         let (x1, y1) = ((x0 + 1).min(self.width - 1), (y0 + 1).min(self.height - 1));
         let (tx, ty) = (fx - x0 as f32, fy - y0 as f32);
-        let (a, b, c, d) = (self.get(x0, y0), self.get(x1, y0), self.get(x0, y1), self.get(x1, y1));
+        let (a, b, c, d) = (
+            self.get(x0, y0),
+            self.get(x1, y0),
+            self.get(x0, y1),
+            self.get(x1, y1),
+        );
         std::array::from_fn(|i| {
             let top = a[i] + (b[i] - a[i]) * tx;
             let bottom = c[i] + (d[i] - c[i]) * tx;

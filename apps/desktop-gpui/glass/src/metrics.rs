@@ -31,7 +31,8 @@ pub fn ssim(a: &Rgba, b: &Rgba, mask: &[bool]) -> f64 {
         let vx = e_xx[index] - mx * mx;
         let vy = e_yy[index] - my * my;
         let cov = e_xy[index] - mx * my;
-        total += ((2. * mx * my + c1) * (2. * cov + c2)) / ((mx * mx + my * my + c1) * (vx + vy + c2));
+        total +=
+            ((2. * mx * my + c1) * (2. * cov + c2)) / ((mx * mx + my * my + c1) * (vx + vy + c2));
         count += 1;
     }
     if count == 0 { 1. } else { total / count as f64 }
@@ -98,14 +99,22 @@ pub fn separable_blur(values: &[f64], width: usize, height: usize, kernel: &[f64
 fn srgb_to_lab(px: &[f32]) -> [f64; 3] {
     let linear = |c: f32| {
         let c = (c as f64 / 255.).clamp(0., 1.);
-        if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
     };
     let (r, g, b) = (linear(px[0]), linear(px[1]), linear(px[2]));
     let x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
     let y = 0.2126729 * r + 0.7151522 * g + 0.0721750 * b;
     let z = (0.0193339 * r + 0.1191920 * g + 0.9503041 * b) / 1.08883;
     let f = |t: f64| {
-        if t > 216. / 24389. { t.cbrt() } else { (24389. / 27. * t + 16.) / 116. }
+        if t > 216. / 24389. {
+            t.cbrt()
+        } else {
+            (24389. / 27. * t + 16.) / 116.
+        }
     };
     let (fx, fy, fz) = (f(x), f(y), f(z));
     [116. * fy - 16., 500. * (fx - fy), 200. * (fy - fz)]
@@ -175,7 +184,11 @@ mod tests {
             ([50.0, 2.6772, -79.7751], [50.0, 0.0, -82.7485], 2.0425),
             ([50.0, 3.1571, -77.2803], [50.0, 0.0, -82.7485], 2.8615),
             ([50.0, 2.5, 0.0], [73.0, 25.0, -18.0], 27.1492),
-            ([60.2574, -34.0099, 36.2677], [60.4626, -34.1751, 39.4387], 1.2644),
+            (
+                [60.2574, -34.0099, 36.2677],
+                [60.4626, -34.1751, 39.4387],
+                1.2644,
+            ),
         ];
         for (a, b, expected) in pairs {
             assert!((ciede2000(a, b) - expected).abs() < 1e-3, "{a:?} {b:?}");
